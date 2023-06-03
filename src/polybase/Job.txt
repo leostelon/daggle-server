@@ -1,0 +1,22 @@
+@public
+collection Job {
+  id: string; // Bacalhau Job ID
+  user: string;
+  prompt: string;
+  status: string;
+  timestamp:number;
+  
+  @index(user, timestamp);
+  
+  constructor(id: string, user: string, prompt: string) {
+    this.id = id;
+    this.user = user;
+    this.prompt = prompt;
+    this.status = "created";
+    this.timestamp = Date.now();
+  }
+
+  updateStatus(status: string) {
+    this.status = status;
+  }
+}

@@ -1,0 +1,29 @@
+@public
+collection User {
+  id: string; // wallet address
+
+  publicKey?: PublicKey;
+  name: string; // wallet address
+  username?: string;
+  token?: string;
+  updatedUsername:boolean;
+
+  constructor (id: string) {
+    this.id = id;
+    this.name = id;
+    this.updatedUsername = false;
+    this.publicKey = ctx.publicKey;
+  }
+
+  updateToken(token: string) {
+    this.token = token;
+  }
+
+  updateUsername(name:string) {
+     if(this.updatedUsername) {
+       error("You can update your username only once.");
+     }
+     this.username = name;
+     this.updatedUsername = true;
+  }
+}

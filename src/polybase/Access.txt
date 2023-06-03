@@ -1,0 +1,19 @@
+@public
+collection Access {
+  id: string;
+  accessTokenId: string;
+  user: string;
+  tokenAddress: string;
+  supply: number;
+
+  @index(user, accessTokenId);
+  
+  constructor(accessTokenId: string, user: string, tokenAddress: string, supply: number) {
+    this.id = user + ":" + tokenAddress;
+    this.accessTokenId = accessTokenId;
+    this.user = user;
+    this.tokenAddress = tokenAddress;
+    this.supply = supply;
+    this.timestamp = Date.now();
+  }
+}

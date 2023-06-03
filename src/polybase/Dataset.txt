@@ -1,0 +1,51 @@
+@public
+collection Dataset {
+  id: string;
+  name: string;
+  version: string;
+  creator: string;
+  description: string;
+  file: string;
+  timestamp: number;
+  private: boolean;
+  latest: boolean;
+  tokenAccessEnabled: boolean;
+  stableDiffusionEnabled: boolean;
+
+  @index(timestamp);
+  @index(private, creator);
+  @index(name, timestamp);
+  @index(name, latest);
+  @index(creator, timestamp);
+  @index(latest, timestamp);
+  
+  constructor(name:string, version:string, file: string, creator:string, description:string, stableDiffusionEnabled: boolean) {
+    this.id = name + ":" + version;
+    this.name = name;
+    this.version = version;
+    this.file = file;
+    this.creator = creator;
+    this.description = description;
+    this.timestamp = Date.now();
+    this.private = false;
+    this.latest = true;
+    this.tokenAccessEnabled = false;
+    this.stableDiffusionEnabled = stableDiffusionEnabled;
+  }
+
+  disableLatest() {
+    this.latest = false;
+  }
+
+  enableTokenAccess() {
+    this.tokenAccessEnabled = true;
+  }
+  
+  makePrivate() {
+    this.private = true;
+  }
+
+  makePublic() {
+    this.private = false;
+  }
+}

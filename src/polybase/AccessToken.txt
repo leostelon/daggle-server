@@ -1,0 +1,25 @@
+@public
+collection AccessToken {
+  id: string;
+  datasetId: string;
+  datasetName: string;
+  user: string;
+  name: string;
+  tokenAddress: string;
+  miniumPurchase: number;
+  maxSupply: number;
+  pricePerToken: number;
+
+  constructor(datasetId: string, datasetName: string, user: string, name: string, tokenAddress: string, miniumPurchase: number, pricePerToken: number, maxSupply: number) {
+    this.id = user + ":" + datasetName;
+    this.datasetId = datasetId;
+    this.datasetName = datasetName;
+    this.user = user;
+    this.name = name;
+    this.maxSupply = maxSupply;
+    this.pricePerToken = pricePerToken;
+    this.miniumPurchase = miniumPurchase;
+    this.tokenAddress = tokenAddress;
+    this.timestamp = Date.now();
+  }
+}
