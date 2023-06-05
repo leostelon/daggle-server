@@ -2,17 +2,17 @@
 collection Job {
   id: string; // Bacalhau Job ID
   user: string;
-  prompt: string;
+  type: string;
   status: string;
   timestamp:number;
   
   @index(user, timestamp);
   
-  constructor(id: string, user: string, prompt: string) {
+  constructor(id: string, user: string, type: string) {
     this.id = id;
     this.user = user;
-    this.prompt = prompt;
-    this.status = "created";
+    this.type = type;
+    this.status = "Created";
     this.timestamp = Date.now();
   }
 

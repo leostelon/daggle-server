@@ -9,6 +9,30 @@ const datasetReference = db.collection("Dataset");
 const accessTokenReference = db.collection("AccessToken");
 const accessReference = db.collection("Access");
 
+router.post("/bacalhau/fileupload", auth, async (req, res) => {
+	try {
+		const { url } = req.body;
+		if (!url)
+			return res
+				.status(500)
+				.send({ message: "Please send url!" });
+
+		// Create upload file job
+		const command = `bacalhau docker run -i ${url} --id-only alpine -- sh -c "cp -r /inputs/* /outputs/"`;
+		const { stdout, stderr } = await exec(command);
+		if (stderr) return console.log("Error", stderr);
+		const jobId = stdout.replace(/(\r\n|\n|\r)/gm, "");
+		console.log(jobId);
+
+		// Upload job id to polybase
+		const response = await jobReference.create([jobId, req.user.id, "file-upload"]);
+
+		res.send(response.data);
+	} catch (error) {
+		console.log(error.message);
+	}
+});
+
 router.post("/bacalhau", auth, async (req, res) => {
 	try {
 		const { prompt, datasetId } = req.body;
@@ -89,3 +113,11 @@ module.exports = router;
 
 // bacalhau docker run -i ipfs://QmRKnvqvpFzLjEoeeNNGHtc7H8fCn9TvNWHFnbBHkK8Mhy jsacex/dreambooth:full --id-only -- bash finetune.sh /inputs /outputs "a photo of sbf man" 3000
 // bacalhau docker run \ --gpu 1 \ -i ipfs://QmRKnvqvpFzLjEoeeNNGHtc7H8fCn9TvNWHFnbBHkK8Mhy \ jsacex/dreambooth:full \ -- bash finetune.sh /inputs /outputs "a photo of sbf man" "a photo of man" 3000 "/man"  "/model"
+
+// bacalhau docker run -i
+// https://camo.githubusercontent.com/86f745f3132302e706e67
+// --wait alpine -- sh -c "cp -r /inputs/* /outputs/"
+
+// bacalhau docker run leostelon/test:0.4 -- sh -c "cp -r /results/* /outputs/"
+
+// bacalhau get f3098d34-41cc-4e13-b30c-be16b4eced57 --output-dir data
