@@ -20,12 +20,10 @@ router.post(
 				return res.send({ message: "Please upload a file." });
 			}
 			const files = req.files;
-			const dataset = req.body.dataset;
+			const name = req.body.name;
 			const description = req.body.description;
 			const stableDiffusionEnabled =
 				req.body.stableDiffusionEnabled === "false" ? false : true;
-			const tag = dataset.split(":").pop();
-			const name = dataset.split(":").slice(0, -1).join(":");
 
 			// Upload to Spheron
 			let filePath;
@@ -34,36 +32,26 @@ router.post(
 			} else {
 				filePath = path.join(__dirname, "../../uploads/" + files[0].filename);
 			}
+			let currentlyUploaded = 0;
 			const response = await client.upload(filePath, {
 				protocol: ProtocolEnum.IPFS,
-				name: "testdaggle",
+				name: "hackfs",
 				onUploadInitiated: (uploadId) => {
 					console.log(`Upload with id ${uploadId} started...`);
 				},
 				onChunkUploaded: (uploadedSize, totalSize) => {
-					let currentlyUploaded;
 					currentlyUploaded += uploadedSize;
 					console.log(`Uploaded ${currentlyUploaded} of ${totalSize} Bytes.`);
 				},
 			});
 
-			// Check for latest
-			const dataSetList = await dataReference
-				.where("name", "==", `${req.user.id}/${name}`)
-				.where("latest", "==", true)
-				.get();
-			if (dataSetList.data.length > 0) {
-				ds = dataSetList.data[0].data;
-				await dataReference.record(ds.id).call("disableLatest", []);
-			}
 			// Upload to polybase
 			repoImage = await dataReference.create([
-				`${req.user.id}/${name}`,
-				tag,
+				name,
 				response.protocolLink,
 				req.user.id,
 				description,
-				stableDiffusionEnabled,
+				currentlyUploaded
 			]);
 
 			// Delete Files
