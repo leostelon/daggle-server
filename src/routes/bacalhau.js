@@ -1,13 +1,16 @@
+const fs = require("fs");
 const util = require("util");
+const path = require("path");
 const exec = util.promisify(require("child_process").exec);
+const { SpheronClient, ProtocolEnum } = require("@spheron/storage");
 const router = require("express").Router();
 const { auth } = require("../middlewares/auth");
 const { db } = require("../polybase");
 
 const jobReference = db.collection("Job");
-const datasetReference = db.collection("Dataset");
-const accessTokenReference = db.collection("AccessToken");
-const accessReference = db.collection("Access");
+
+const token = process.env.SPHERON_TOKEN;
+const client = new SpheronClient({ token });
 
 router.post("/bacalhau/fileupload", auth, async (req, res) => {
 	try {
@@ -22,7 +25,6 @@ router.post("/bacalhau/fileupload", auth, async (req, res) => {
 		const { stdout, stderr } = await exec(command);
 		if (stderr) return console.log("Error", stderr);
 		const jobId = stdout.replace(/(\r\n|\n|\r)/gm, "");
-		console.log(jobId);
 
 		// Upload job id to polybase
 		const response = await jobReference.create([jobId, req.user.id, "file-upload"]);
@@ -33,45 +35,59 @@ router.post("/bacalhau/fileupload", auth, async (req, res) => {
 	}
 });
 
-router.post("/bacalhau", auth, async (req, res) => {
+router.post("/bacalhau/pythonscript", auth, async (req, res) => {
 	try {
-		const { prompt, datasetId } = req.body;
-		if (!datasetId || !prompt)
+		const { script } = req.body;
+		if (!script)
 			return res
 				.status(500)
-				.send({ message: "Please send datasetId and prompt!" });
+				.send({ message: "Please send script!" });
 
-		const accessToken = await accessTokenReference
-			.where("datasetId", "==", datasetId)
-			.get();
-		if (accessToken.data.length === 0)
-			return res.status(404).send({ message: "Invalid dataset id." });
+		// Create File
+		var writeStream = fs.createWriteStream(`model-${Date.now()}.py`);
+		writeStream.write(script);
+		writeStream.end();
 
-		// Authentication
-		const access = await accessReference
-			.where("user", "==", req.user.id)
-			.where("accessTokenId", "==", accessToken.data[0].data.id)
-			.get();
+		// Upload File
+		let currentlyUploaded = 0;
+		const fileUploadResponse = await client.upload(path.join(__dirname, `../../${writeStream.path}`), {
+			protocol: ProtocolEnum.FILECOIN,
+			name: "hackfs",
+			onUploadInitiated: (uploadId) => {
+				console.log(`Upload with id ${uploadId} started...`);
+			},
+			onChunkUploaded: (uploadedSize, totalSize) => {
+				currentlyUploaded += uploadedSize;
+				console.log(`Uploaded ${currentlyUploaded} of ${totalSize} Bytes.`);
+			},
+		});
 
-		if (access.data.length === 0)
+		// Delete file
+		fs.rmSync(path.join(__dirname, `../../${writeStream.path}`));
+
+		res.send({ ...fileUploadResponse, filename: writeStream.path });
+	} catch (error) {
+		console.log(error.message);
+	}
+});
+
+router.post("/bacalhau/traintensorflow", auth, async (req, res) => {
+	try {
+		let { scriptUrl, datasetUrl, filename } = req.body;
+		if (!scriptUrl || !filename || !datasetUrl)
 			return res
-				.status(401)
-				.send({ message: "You don't have enough access token's." });
+				.status(500)
+				.send({ message: "Please send scriptUrl, datasetUrl & filename!" });
 
-		// Get dataset
-		const dataset = await datasetReference.record(datasetId).get();
-		let link = dataset.data.file;
-		link = link.replace(".ipfs.sphn.link", "").replace("https", "ipfs");
-
-		// Create a job
-		const command = `bacalhau docker run -i ${link} jsacex/dreambooth:full --id-only -- bash finetune.sh /inputs /outputs "${prompt}" 100`;
+		// Create upload file job
+		datasetUrl = datasetUrl.replace(".ipfs.sphn.link", "").replace("https", "ipfs");
+		const command = `bacalhau docker run --wait=false --id-only -w /inputs  -i ${scriptUrl}/${filename} -i ${datasetUrl} tensorflow/tensorflow -- python ${filename}`;
 		const { stdout, stderr } = await exec(command);
-		if (stderr) return console.log("Error", stderr);
+		if (stderr) return res.status(500).send({ message: stderr });
 		const jobId = stdout.replace(/(\r\n|\n|\r)/gm, "");
-		console.log(jobId);
 
 		// Upload job id to polybase
-		const response = await jobReference.create([jobId, req.user.id, prompt]);
+		const response = await jobReference.create([jobId, req.user.id, "train-tensorflow"]);
 
 		res.send(response.data);
 	} catch (error) {
@@ -97,7 +113,7 @@ router.get("/bacalhau/job", async (req, res) => {
 		// Get job
 		const command = `bacalhau describe ${req.query.id} --json`;
 		const { stdout, stderr } = await exec(command);
-		if (stderr) return console.log("Error", stderr);
+		if (stderr) return res.status(500).send({ message: stderr });
 		const parsedOutput = JSON.parse(stdout);
 		const cid = parsedOutput.State.Executions[2].PublishedResults.CID;
 		const state = parsedOutput.State.Executions[2].State;
@@ -121,3 +137,5 @@ module.exports = router;
 // bacalhau docker run leostelon/test:0.4 -- sh -c "cp -r /results/* /outputs/"
 
 // bacalhau get f3098d34-41cc-4e13-b30c-be16b4eced57 --output-dir data
+
+// bacalhau docker run --id-only -w /inputs -i https://gist.githubusercontent.com/js-ts/e7d32c7d19ffde7811c683d4fcb1a219/raw/ff44ac5b157d231f464f4d43ce0e05bccb4c1d7b/train.py -i https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz tensorflow/tensorflow -- python train.py
