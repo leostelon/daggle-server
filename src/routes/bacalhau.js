@@ -6,8 +6,10 @@ const { SpheronClient, ProtocolEnum } = require("@spheron/storage");
 const router = require("express").Router();
 const { auth } = require("../middlewares/auth");
 const { db } = require("../polybase");
+const { query } = require("express");
 
 const jobReference = db.collection("Job");
+const modelReference = db.collection("Model");
 
 const token = process.env.SPHERON_TOKEN;
 const client = new SpheronClient({ token });
@@ -108,18 +110,25 @@ router.get("/bacalhau", auth, async (req, res) => {
 	}
 });
 
-router.get("/bacalhau/job", async (req, res) => {
+router.get("/bacalhau/job", auth, async (req, res) => {
 	try {
 		// Get job
 		const command = `bacalhau describe ${req.query.id} --json`;
 		const { stdout, stderr } = await exec(command);
 		if (stderr) return res.status(500).send({ message: stderr });
 		const parsedOutput = JSON.parse(stdout);
-		const cid = parsedOutput.State.Executions[2].PublishedResults.CID;
-		const state = parsedOutput.State.Executions[2].State;
+		const cid = parsedOutput.State.Executions[1].PublishedResults.CID;
+		const state = parsedOutput.State.State;
 
 		await jobReference.record(req.query.id).call("updateStatus", [state]);
-		res.send({ cid, state });
+		if (state === "Completed") {
+			await jobReference.record(req.query.id).call("updateResult", [cid]);
+			if (req.query.type === "train-tensorflow") {
+				// Create new model
+				await modelReference.create([req.query.id, req.user.id, cid, new Date(parsedOutput.State.UpdateTime).valueOf()]);
+			}
+		}
+		res.send(parsedOutput);
 	} catch (error) {
 		console.log(error.message);
 	}

@@ -5,6 +5,7 @@ collection Job {
   type: string;
   status: string;
   timestamp:number;
+  result: string;
   
   @index(user, timestamp);
   
@@ -18,5 +19,9 @@ collection Job {
 
   updateStatus(status: string) {
     this.status = status;
+  }
+
+  updateResult(cid: string) {
+    this.result = cid;
   }
 }

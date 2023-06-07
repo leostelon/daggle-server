@@ -1,0 +1,18 @@
+@public
+collection Model {
+  id: string; // Bacalhau Job ID
+  job_id: string; // Bacalhau Job ID
+  user: string;
+  timestamp:number;
+  file: string;
+  
+  @index(user, timestamp);
+  
+  constructor(id: string, user: string, file: string, timestamp: number) {
+    this.id = id;
+    this.job_id = id;
+    this.user = user;
+    this.file = file;
+    this.timestamp = timestamp;
+  }
+}
