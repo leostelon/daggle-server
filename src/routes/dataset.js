@@ -10,7 +10,7 @@ const accessTokenReference = db.collection("AccessToken");
 router.get("/datasets", auth, async (req, res) => {
 	try {
 		const ds = await datasetReference.where("creator", "==", req.user.id).sort("timestamp", "desc").limit().get();
-		res.send({ repositories: ds.data });
+		res.send(ds.data);
 	} catch (error) {
 		res.status(500).send({ message: error.message });
 	}
