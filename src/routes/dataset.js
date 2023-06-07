@@ -4,12 +4,22 @@ const { auth } = require("../middlewares/auth");
 const getUser = require("../middlewares/getUser");
 
 const datasetReference = db.collection("Dataset");
+const modelReference = db.collection("Model");
 const accessReference = db.collection("Access");
 const accessTokenReference = db.collection("AccessToken");
 
 router.get("/datasets", auth, async (req, res) => {
 	try {
 		const ds = await datasetReference.where("creator", "==", req.user.id).sort("timestamp", "desc").limit().get();
+		res.send(ds.data);
+	} catch (error) {
+		res.status(500).send({ message: error.message });
+	}
+});
+
+router.get("/models", auth, async (req, res) => {
+	try {
+		const ds = await modelReference.where("user", "==", req.user.id).sort("timestamp", "desc").limit().get();
 		res.send(ds.data);
 	} catch (error) {
 		res.status(500).send({ message: error.message });
