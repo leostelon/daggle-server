@@ -5,7 +5,7 @@ collection Job {
   type: string;
   status: string;
   timestamp:number;
-  result: string;
+  result?: string;
   
   @index(user, timestamp);
   

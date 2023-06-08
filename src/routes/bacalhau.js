@@ -96,6 +96,65 @@ router.post("/bacalhau/runpython", auth, async (req, res) => {
 	}
 });
 
+router.post("/bacalhau/nodescript", auth, async (req, res) => {
+	try {
+		const { script } = req.body;
+		if (!script)
+			return res
+				.status(500)
+				.send({ message: "Please send script!" });
+
+		// Create File
+		var writeStream = fs.createWriteStream(`code-${Date.now()}.js`);
+		writeStream.write(script);
+		writeStream.end();
+
+		// Upload File
+		let currentlyUploaded = 0;
+		const fileUploadResponse = await client.upload(path.join(__dirname, `../../${writeStream.path}`), {
+			protocol: ProtocolEnum.FILECOIN,
+			name: "hackfs",
+			onUploadInitiated: (uploadId) => {
+				console.log(`Upload with id ${uploadId} started...`);
+			},
+			onChunkUploaded: (uploadedSize, totalSize) => {
+				currentlyUploaded += uploadedSize;
+				console.log(`Uploaded ${currentlyUploaded} of ${totalSize} Bytes.`);
+			},
+		});
+
+		// Delete file
+		fs.rmSync(path.join(__dirname, `../../${writeStream.path}`));
+
+		res.send({ ...fileUploadResponse, filename: writeStream.path });
+	} catch (error) {
+		console.log(error.message);
+	}
+});
+
+router.post("/bacalhau/runnodejs", auth, async (req, res) => {
+	try {
+		let { scriptUrl, filename } = req.body;
+		if (!scriptUrl || !filename)
+			return res
+				.status(500)
+				.send({ message: "Please send scriptUrl,  & filename!" });
+
+		// Create upload file job
+		const command = `bacalhau docker run --wait=false --id-only -w /inputs  -i ${scriptUrl}/${filename} node:alpine -- node ${filename}`;
+		const { stdout, stderr } = await exec(command);
+		if (stderr) return res.status(500).send({ message: stderr });
+		const jobId = stdout.replace(/(\r\n|\n|\r)/gm, "");
+
+		// Upload job id to polybase
+		const response = await jobReference.create([jobId, req.user.id, "script-nodejs"]);
+
+		res.send(response.data);
+	} catch (error) {
+		console.log(error.message);
+	}
+});
+
 router.post("/bacalhau/traintensorflow", auth, async (req, res) => {
 	try {
 		let { scriptUrl, datasetUrl, filename } = req.body;
