@@ -73,6 +73,29 @@ router.post("/bacalhau/pythonscript", auth, async (req, res) => {
 	}
 });
 
+router.post("/bacalhau/runpython", auth, async (req, res) => {
+	try {
+		let { scriptUrl, filename } = req.body;
+		if (!scriptUrl || !filename)
+			return res
+				.status(500)
+				.send({ message: "Please send scriptUrl,  & filename!" });
+
+		// Create upload file job
+		const command = `bacalhau docker run --wait=false --id-only -w /inputs  -i ${scriptUrl}/${filename} python:alpine3.18 -- python ${filename}`;
+		const { stdout, stderr } = await exec(command);
+		if (stderr) return res.status(500).send({ message: stderr });
+		const jobId = stdout.replace(/(\r\n|\n|\r)/gm, "");
+
+		// Upload job id to polybase
+		const response = await jobReference.create([jobId, req.user.id, "script-python"]);
+
+		res.send(response.data);
+	} catch (error) {
+		console.log(error.message);
+	}
+});
+
 router.post("/bacalhau/traintensorflow", auth, async (req, res) => {
 	try {
 		let { scriptUrl, datasetUrl, filename } = req.body;
@@ -117,7 +140,8 @@ router.get("/bacalhau/job", auth, async (req, res) => {
 		const { stdout, stderr } = await exec(command);
 		if (stderr) return res.status(500).send({ message: stderr });
 		const parsedOutput = JSON.parse(stdout);
-		const cid = parsedOutput.State.Executions[1].PublishedResults.CID;
+		let cidObj = parsedOutput.State.Executions.filter(e => Object.keys(e.PublishedResults).length !== 0 && e.PublishedResults.hasOwnProperty("CID"))[0]
+		const cid = cidObj.PublishedResults.CID;
 		const state = parsedOutput.State.State;
 
 		await jobReference.record(req.query.id).call("updateStatus", [state]);
@@ -148,3 +172,5 @@ module.exports = router;
 // bacalhau get f3098d34-41cc-4e13-b30c-be16b4eced57 --output-dir data
 
 // bacalhau docker run --id-only -w /inputs -i https://gist.githubusercontent.com/js-ts/e7d32c7d19ffde7811c683d4fcb1a219/raw/ff44ac5b157d231f464f4d43ce0e05bccb4c1d7b/train.py -i https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz tensorflow/tensorflow -- python train.py
+
+// bacalhau docker run -w /inputs -i https://bafybeidrumapv4xahqoic7iywjf6p63r6jk2ojqjo2ek275bjquablxnyu.ipfs.sphn.link/model-1686215740168.py python:alpine3.18 -- python model-1686215740168.py
