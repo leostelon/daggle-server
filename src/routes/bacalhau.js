@@ -203,15 +203,15 @@ router.get("/bacalhau/job", auth, async (req, res) => {
 		const cid = cidObj.PublishedResults.CID;
 		const state = parsedOutput.State.State;
 
-		await jobReference.record(req.query.id).call("updateStatus", [state]);
+		let job = await jobReference.record(req.query.id).call("updateStatus", [state]);
 		if (state === "Completed") {
-			await jobReference.record(req.query.id).call("updateResult", [cid]);
+			job = await jobReference.record(req.query.id).call("updateResult", [cid]);
 			if (req.query.type === "train-tensorflow") {
 				// Create new model
 				await modelReference.create([req.query.id, req.user.id, cid, new Date(parsedOutput.State.UpdateTime).valueOf()]);
 			}
 		}
-		res.send(parsedOutput);
+		res.send(job.data);
 	} catch (error) {
 		console.log(error.message);
 	}
