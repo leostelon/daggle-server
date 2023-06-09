@@ -38,11 +38,12 @@ router.post("/user/username", auth, async (req, res) => {
     }
 })
 
-router.get("/user/enablepremium", auth, async (req, res) => {
+router.post("/user/addcredits", auth, async (req, res) => {
     try {
+        if (!req.body.credits) return res.status(500).send({ message: "Please send credits" });
         const response = await collectionReference
             .record(req.user.id)
-            .call("updatePremium", []);
+            .call("addCredits", [req.body.credits]);
 
         res.send(response.data)
     } catch (error) {
