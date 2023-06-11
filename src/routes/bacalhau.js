@@ -188,10 +188,17 @@ router.post("/bacalhau/traintensorflow", auth, async (req, res) => {
 
 router.get("/bacalhau", auth, async (req, res) => {
 	try {
-		const response = await jobReference
-			.where("user", "==", req.user.id)
-			.sort("timestamp", "desc")
-			.get();
+		let response;
+		if (req.query.query !== "undefined" && req.query.query !== "") {
+			response = await jobReference
+				.where("user", "==", req.user.id)
+				.where("id", "==", req.query.query)
+				.get();
+		} else
+			response = await jobReference
+				.where("user", "==", req.user.id)
+				.sort("timestamp", "desc")
+				.get();
 
 		res.send(response.data);
 	} catch (error) {
