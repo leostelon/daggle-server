@@ -13,6 +13,7 @@ const modelReference = db.collection("Model");
 
 const token = process.env.SPHERON_TOKEN;
 const client = new SpheronClient({ token });
+const { sendNotification } = require("./push")
 
 router.post("/bacalhau/fileupload", auth, async (req, res) => {
 	try {
@@ -32,6 +33,7 @@ router.post("/bacalhau/fileupload", auth, async (req, res) => {
 		const response = await jobReference.create([jobId, req.user.id, "file-upload"]);
 
 		res.send(response.data);
+		sendNotification(req.user.id, "File upload started")
 	} catch (error) {
 		console.log(error.message);
 	}
@@ -68,6 +70,7 @@ router.post("/bacalhau/pythonscript", auth, async (req, res) => {
 		fs.rmSync(path.join(__dirname, `../../${writeStream.path}`));
 
 		res.send({ ...fileUploadResponse, filename: writeStream.path });
+		sendNotification(req.user.id, "Uploaded python script")
 	} catch (error) {
 		console.log(error.message);
 	}
@@ -91,6 +94,7 @@ router.post("/bacalhau/runpython", auth, async (req, res) => {
 		const response = await jobReference.create([jobId, req.user.id, "script-python"]);
 
 		res.send(response.data);
+		sendNotification(req.user.id, "Created python job")
 	} catch (error) {
 		console.log(error.message);
 	}
@@ -127,6 +131,7 @@ router.post("/bacalhau/nodescript", auth, async (req, res) => {
 		fs.rmSync(path.join(__dirname, `../../${writeStream.path}`));
 
 		res.send({ ...fileUploadResponse, filename: writeStream.path });
+		sendNotification(req.user.id, "Uploaded node.js script")
 	} catch (error) {
 		console.log(error.message);
 	}
@@ -150,6 +155,7 @@ router.post("/bacalhau/runnodejs", auth, async (req, res) => {
 		const response = await jobReference.create([jobId, req.user.id, "script-nodejs"]);
 
 		res.send(response.data);
+		sendNotification(req.user.id, "Created node.js job")
 	} catch (error) {
 		console.log(error.message);
 	}
@@ -174,6 +180,7 @@ router.post("/bacalhau/traintensorflow", auth, async (req, res) => {
 		const response = await jobReference.create([jobId, req.user.id, "train-tensorflow"]);
 
 		res.send(response.data);
+		sendNotification(req.user.id, "Created Tensorflow job")
 	} catch (error) {
 		console.log(error.message);
 	}
@@ -212,6 +219,7 @@ router.get("/bacalhau/job", auth, async (req, res) => {
 			}
 		}
 		res.send(job.data);
+		sendNotification(req.user.id, `${state} ${req.query.type} job`, "")
 	} catch (error) {
 		console.log(error.message);
 	}
