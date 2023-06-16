@@ -232,6 +232,30 @@ router.get("/bacalhau/job", auth, async (req, res) => {
 	}
 });
 
+router.post("/bacalhau/removebg", auth, async (req, res) => {
+	try {
+		let { fileUrl, filename } = req.body;
+		if (!fileUrl || !filename)
+			return res
+				.status(500)
+				.send({ message: "Please send CID & filename!" });
+
+		// Create upload file job
+		const command = `bacalhau docker run --wait=false --id-only -w /inputs -i ${fileUrl}/${filename} leostelon/removebg:0.4 -- python script.py ${filename}`;
+		const { stdout, stderr } = await exec(command);
+		if (stderr) return res.status(500).send({ message: stderr });
+		const jobId = stdout.replace(/(\r\n|\n|\r)/gm, "");
+
+		// Upload job id to polybase
+		const response = await jobReference.create([jobId, req.user.id, "removebg"]);
+
+		res.send(response.data);
+		sendNotification(req.user.id, "Created Removebg job")
+	} catch (error) {
+		console.log(error.message);
+	}
+});
+
 module.exports = router;
 
 // bacalhau docker run -i ipfs://QmRKnvqvpFzLjEoeeNNGHtc7H8fCn9TvNWHFnbBHkK8Mhy jsacex/dreambooth:full --id-only -- bash finetune.sh /inputs /outputs "a photo of sbf man" 3000
@@ -248,3 +272,5 @@ module.exports = router;
 // bacalhau docker run --id-only -w /inputs -i https://gist.githubusercontent.com/js-ts/e7d32c7d19ffde7811c683d4fcb1a219/raw/ff44ac5b157d231f464f4d43ce0e05bccb4c1d7b/train.py -i https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz tensorflow/tensorflow -- python train.py
 
 // bacalhau docker run -w /inputs -i https://bafybeidrumapv4xahqoic7iywjf6p63r6jk2ojqjo2ek275bjquablxnyu.ipfs.sphn.link/model-1686215740168.py python:alpine3.18 -- python model-1686215740168.py
+
+// bacalhau docker run -w /inputs -i https://bafybeib3vbog2fhyyinn5yqu7w7hzo4ifkk222cc6nqosgaqpakqzgnxyq.ipfs.sphn.link/sample.png leostelon/removebg:0.4 -- python script.py sample.png
