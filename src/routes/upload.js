@@ -71,4 +71,46 @@ router.post(
 	}
 );
 
+router.post(
+	"/upload/file",
+	auth,
+	upload.single("file"),
+	async (req, res) => {
+		try {
+			if (!req.file) {
+				return res.status(500).send({ message: "Please upload a file." });
+			}
+			const file = req.file;
+
+			// Upload to Spheron
+			let filePath;
+			filePath = path.join(__dirname, "../../uploads/" + file.filename);
+			let currentlyUploaded = 0;
+			const response = await client.upload(filePath, {
+				protocol: ProtocolEnum.IPFS,
+				name: "hackfs",
+				onUploadInitiated: (uploadId) => {
+					console.log(`Upload with id ${uploadId} started...`);
+				},
+				onChunkUploaded: (uploadedSize, totalSize) => {
+					currentlyUploaded += uploadedSize;
+					console.log(`Uploaded ${currentlyUploaded} of ${totalSize} Bytes.`);
+				},
+			});
+
+			// Delete Files
+			fs.rmSync(`${file.destination}/${file.filename}`);
+
+			res.send({ ...response, file });
+		} catch (error) {
+			console.log(error);
+			res.status(500).send({ message: error.message });
+		}
+	},
+	(err, req, res, next) => {
+		console.log(err);
+		res.status(400).send({ error: err.message });
+	}
+);
+
 module.exports = router;
