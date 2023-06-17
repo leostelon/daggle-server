@@ -213,12 +213,12 @@ router.get("/bacalhau/job", auth, async (req, res) => {
 		const { stdout, stderr } = await exec(command);
 		if (stderr) return res.status(500).send({ message: stderr });
 		const parsedOutput = JSON.parse(stdout);
-		let cidObj = parsedOutput.State.Executions.filter(e => Object.keys(e.PublishedResults).length !== 0 && e.PublishedResults.hasOwnProperty("CID"))[0]
-		const cid = cidObj.PublishedResults.CID;
 		const state = parsedOutput.State.State;
 
 		let job = await jobReference.record(req.query.id).call("updateStatus", [state]);
 		if (state === "Completed") {
+			const cidObj = parsedOutput.State.Executions.filter(e => Object.keys(e.PublishedResults).length !== 0 && e.PublishedResults.hasOwnProperty("CID"))[0]
+			const cid = cidObj.PublishedResults.CID;
 			job = await jobReference.record(req.query.id).call("updateResult", [cid]);
 			if (req.query.type === "train-tensorflow") {
 				// Create new model
