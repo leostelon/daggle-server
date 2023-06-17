@@ -33,4 +33,8 @@ collection User {
     if(!this.credits) this.credits = 10;
     this.credits += credits;
   }
+
+  subCredit() {
+    this.credits -= 1;
+  }
 }

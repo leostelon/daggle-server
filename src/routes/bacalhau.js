@@ -10,6 +10,7 @@ const { query } = require("express");
 
 const jobReference = db.collection("Job");
 const modelReference = db.collection("Model");
+const userReference = db.collection("User");
 
 const token = process.env.SPHERON_TOKEN;
 const client = new SpheronClient({ token });
@@ -31,6 +32,8 @@ router.post("/bacalhau/fileupload", auth, async (req, res) => {
 
 		// Upload job id to polybase
 		const response = await jobReference.create([jobId, req.user.id, "file-upload"]);
+		// Update Credit
+		await userReference.record(req.user.id).call("subCredit", []);
 
 		res.send(response.data);
 		sendNotification(req.user.id, "File upload started")
@@ -92,6 +95,8 @@ router.post("/bacalhau/runpython", auth, async (req, res) => {
 
 		// Upload job id to polybase
 		const response = await jobReference.create([jobId, req.user.id, "script-python"]);
+		// Update Credit
+		await userReference.record(req.user.id).call("subCredit", []);
 
 		res.send(response.data);
 		sendNotification(req.user.id, "Created python job")
@@ -153,6 +158,8 @@ router.post("/bacalhau/runnodejs", auth, async (req, res) => {
 
 		// Upload job id to polybase
 		const response = await jobReference.create([jobId, req.user.id, "script-nodejs"]);
+		// Update Credit
+		await userReference.record(req.user.id).call("subCredit", []);
 
 		res.send(response.data);
 		sendNotification(req.user.id, "Created node.js job")
@@ -178,6 +185,8 @@ router.post("/bacalhau/traintensorflow", auth, async (req, res) => {
 
 		// Upload job id to polybase
 		const response = await jobReference.create([jobId, req.user.id, "train-tensorflow"]);
+		// Update Credit
+		await userReference.record(req.user.id).call("subCredit", []);
 
 		res.send(response.data);
 		sendNotification(req.user.id, "Created Tensorflow job")
@@ -248,6 +257,8 @@ router.post("/bacalhau/removebg", auth, async (req, res) => {
 
 		// Upload job id to polybase
 		const response = await jobReference.create([jobId, req.user.id, "removebg"]);
+		// Update Credit
+		await userReference.record(req.user.id).call("subCredit", []);
 
 		res.send(response.data);
 		sendNotification(req.user.id, "Created Removebg job")
